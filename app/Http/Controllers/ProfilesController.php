@@ -1,15 +1,12 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Intervention\Image\Facades\Image;
 use Illuminate\Http\Request;
 use App\User;
 class ProfilesController extends Controller
 {
-    public function __construct(){
-
-        $this->middleware('auth');
-    }
+    
     
 
     public function index(\App\User $user) {
@@ -21,11 +18,12 @@ class ProfilesController extends Controller
 
     public function edit(\App\User $user) {
 
+        $this->authorize('update',$user->profile);
         return view('profiles.edit',compact('user'));
     }
 
     public function update(\App\User $user) {
-
+        $this->authorize('update',$user->profile);
         $data=request()->validate([
 
             'title'=>'required',
@@ -33,7 +31,17 @@ class ProfilesController extends Controller
             'url'=>'url',
             'image'=>'',
         ]);
-        $user->profile->update($data);
+        if(request('image')) {
+            $imagePath= request('image')->store('profile','public');
+            $image= Image::make(public_path("storage/{$imagePath}"))->fit(300,300);
+            $image->save();
+            $imageArray=['image'=>$imagePath];
+        }
+        // auth()->user()->profile->update($data);
+        auth()->user()->profile->update(array_merge(
+            $data,
+            $imageArray ?? [],
+        ));
         return redirect("/profile/{$user->id}");
     }
 }
